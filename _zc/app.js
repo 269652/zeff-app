@@ -34,6 +34,8 @@ const WORDS = {
   "This phone sends from": ["This phone sends from", "Das Handy sendet von"],
   Steps: ["Steps", "Ablauf"],
   "Loading Zeff …": ["Loading Zeff …", "Zeff lädt …"],
+  "Install as an app": ["Install as an app", "Als App installieren"],
+  iosInstall: ["On the iPhone: the Share button (□↑) → “Add to Home Screen”.", "Auf dem iPhone: Teilen-Knopf (□↑) → „Zum Home-Bildschirm“."],
   "Last attempt": ["Last attempt", "Letzter Versuch"],
   "Download page": ["Download page", "Zum Download"],
   "Send the link to my PC": ["Send the link to my PC", "Link an meinen PC schicken"],
@@ -315,7 +317,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "14";
+const APP_VERSION = "15";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -604,6 +606,45 @@ setInterval(() => document.visibilityState === "visible" && tryConnect(), 20000)
 // The service worker (the app offline). Chrome checks for a new one only now and then — an old app stayed on the phone
 // through many reloads (2026-11-08). So we ask each time the app opens or comes back to the front, and when a new one
 // takes over, the page loads once more: you see the new version at once (not while a pairing link is being read).
+// ---------------------------------------------------------------------------------------------------------------------
+// On the home screen: Chrome (Android, desktop) offers the install itself only in its menu — the app asks once with a
+// small button ("Install as an app"), which brings up Chrome's own dialog. Safari (iPhone) has no such dialog: the
+// button says where its "Add to Home Screen" is. Not shown inside the installed app, nor once you closed it.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const installed = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let installPrompt = null;
+function offerInstall(kind) {
+  if (installed() || store.get("installDismissed", false)) return;
+  const bar = $("install");
+  $("installBtn").textContent = `📲 ${tr("Install as an app")}`;
+  $("installBtn").onclick = async () => {
+    if (kind === "ios") {
+      $("installBtn").textContent = tr("iosInstall");
+      return;
+    }
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
+    installPrompt = null;
+    bar.hidden = true;
+    if (outcome !== "accepted") store.set("installDismissed", true);
+  };
+  $("installClose").onclick = () => {
+    bar.hidden = true;
+    store.set("installDismissed", true);
+  };
+  bar.hidden = false;
+}
+addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  offerInstall("prompt");
+});
+addEventListener("appinstalled", () => ($("install").hidden = true));
+// Safari on the iPhone/iPad (not in another browser there, which can't add to the home screen).
+if (/iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent)) setTimeout(() => offerInstall("ios"), 1500);
+
 if ("serviceWorker" in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
   let reloaded = false;

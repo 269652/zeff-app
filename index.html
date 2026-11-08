@@ -16,6 +16,10 @@
     <!-- Zeff itself, while this phone (or computer) is connected to it: every request of the frame goes through the
          connection (the service worker hands it to this page, the page to Zeff on the PC). -->
     <iframe id="zeff" title="Zeff" hidden></iframe>
+    <div id="install" class="install" role="region" aria-label="Zeff" hidden>
+      <button id="installBtn" type="button" class="install-go"></button>
+      <button id="installClose" type="button" class="install-x" aria-label="✕">✕</button>
+    </div>
     <div id="frameLoading" class="frame-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span data-t="Loading Zeff …"></span></div>
     <div id="lite">
     <header>

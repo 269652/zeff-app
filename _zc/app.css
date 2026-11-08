@@ -86,3 +86,8 @@ body.full { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 .net-pill { position: fixed; top: 6px; left: 50%; transform: translateX(-50%); z-index: 20; font: 12px ui-monospace, monospace; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); opacity: 0.85; }
 .net-panel { position: fixed; left: 0; right: 0; top: 34px; max-height: 60vh; overflow: auto; z-index: 20; margin: 0 8px; padding: 8px; font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+.install { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); padding: 4px; border-radius: 999px; background: var(--accent); color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.install-go { font: inherit; font-size: 15px; font-weight: 600; color: inherit; background: none; border: 0; padding: 8px 12px; min-height: 40px; cursor: pointer; text-align: left; }
+.install-x { font: inherit; color: inherit; background: rgba(255,255,255,.15); border: 0; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; }
+.install-go:focus-visible, .install-x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (prefers-color-scheme: dark) { .install { color: #17171a; } .install-x { background: rgba(0,0,0,.12); } }

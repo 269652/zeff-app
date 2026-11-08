@@ -7,7 +7,7 @@
 // 2. Zeff itself in the app's frame: every request the frame makes (its pages, scripts, data, Server Actions, the live
 //    events) is handed to the app's page, which asks Zeff on the PC through its WebRTC connection and streams the
 //    answer back here. The frame's address stays app.getzeff.com/… — Zeff's own paths.
-const CACHE = "zeff-companion-v15";
+const CACHE = "zeff-companion-v16";
 /** Zeff's own files (/_next/…) as last fetched, each with its hash — kept across versions of the app. */
 const FILES = "zeff-files";
 const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
