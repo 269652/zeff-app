@@ -23,7 +23,7 @@ const WORDS = {
   checksIntro: ["This phone looks for Zeff on your PC over the Wi-Fi. Check:", "Dieses Handy sucht Zeff auf deinem PC über das WLAN. Prüfe:"],
   check1: ["The PC is on and Zeff is running (the Zeff icon in the taskbar's tray).", "Der PC ist an und Zeff läuft (das Zeff-Symbol unten rechts in der Taskleiste)."],
   check2: ["This phone is on the same Wi-Fi as the PC (not on mobile data).", "Dieses Handy ist im selben WLAN wie der PC (nicht im Mobilfunk)."],
-  check3: ["Windows lets phones in: Zeff icon → Phone → “Allow…”, if it shows there.", "Windows lässt Handys herein: Zeff-Symbol → Phone → „Allow…“, falls es dort steht."],
+  check3: ["Windows lets phones in: Zeff icon → Phone — fix what it shows there (the Wi-Fi must be a private network, the firewall must allow Zeff).", "Windows lässt Handys herein: Zeff-Symbol → Phone — dort Angezeigtes beheben (das WLAN muss ein privates Netzwerk sein, die Firewall Zeff erlauben)."],
   check4: ["Still nothing: pair again (Zeff icon → Phone → Pair a phone) — the PC's address may have changed.", "Immer noch nichts: neu koppeln (Zeff-Symbol → Phone → Pair a phone) — die Adresse des PCs kann sich geändert haben."],
   "No Zeff on your PC yet?": ["No Zeff on your PC yet?", "Noch kein Zeff auf dem PC?"],
   install1: ["On your PC (Windows or Linux), download Zeff from getzeff.com.", "Lade Zeff auf deinem PC (Windows oder Linux) von getzeff.com herunter."],
