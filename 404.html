@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#6d28d9" />
+    <meta name="theme-color" content="#000000" />
     <meta name="referrer" content="no-referrer" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:" />
     <title>Zeff</title>
@@ -16,8 +16,8 @@
     <!-- Zeff itself, while this phone (or computer) is connected to it: every request of the frame goes through the
          connection (the service worker hands it to this page, the page to Zeff on the PC). -->
     <iframe id="zeff" title="Zeff" hidden></iframe>
-    <div id="install" class="install" role="region" aria-label="Zeff" hidden>
-      <button id="installBtn" type="button" class="install-go"></button>
+    <div id="install" class="install" role="status" hidden>
+      <span id="installBtn" class="install-go"></span>
       <button id="installClose" type="button" class="install-x" aria-label="✕">✕</button>
     </div>
     <div id="frameLoading" class="frame-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span data-t="Loading Zeff …"></span></div>
@@ -25,6 +25,7 @@
     <header>
       <h1>Zeff</h1>
       <label id="accountBox" class="account" hidden><span id="accountDot" class="dot"></span><span class="sr" data-t="Account"></span><select id="account"></select></label>
+      <button id="liteInstall" class="icon-btn" type="button" aria-label="+" title="Install" hidden>+</button>
       <button id="status" class="status" type="button" aria-live="polite"><span class="dot"></span><span id="statusText"></span></button>
     </header>
     <main>

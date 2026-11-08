@@ -317,7 +317,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "15";
+const APP_VERSION = "16";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -607,43 +607,53 @@ setInterval(() => document.visibilityState === "visible" && tryConnect(), 20000)
 // through many reloads (2026-11-08). So we ask each time the app opens or comes back to the front, and when a new one
 // takes over, the page loads once more: you see the new version at once (not while a pairing link is being read).
 // ---------------------------------------------------------------------------------------------------------------------
-// On the home screen: Chrome (Android, desktop) offers the install itself only in its menu — the app asks once with a
-// small button ("Install as an app"), which brings up Chrome's own dialog. Safari (iPhone) has no such dialog: the
-// button says where its "Add to Home Screen" is. Not shown inside the installed app, nor once you closed it.
+// On the home screen: the browser's install offer (Chrome: beforeinstallprompt) is held here, and the "+" in Zeff's
+// header (src/components/InstallAppButton.tsx, in the frame) asks for it through window.zeffInstall — so does the "+" in
+// the app's own header (offline view). Safari on the iPhone has no such dialog: "+" says where its "Add to Home
+// Screen" is. No "+" inside the installed app.
 // ---------------------------------------------------------------------------------------------------------------------
 
 const installed = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+// Safari on the iPhone/iPad (not another browser there: they can't add to the home screen).
+const iosSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
 let installPrompt = null;
-function offerInstall(kind) {
-  if (installed() || store.get("installDismissed", false)) return;
-  const bar = $("install");
-  $("installBtn").textContent = `📲 ${tr("Install as an app")}`;
-  $("installBtn").onclick = async () => {
-    if (kind === "ios") {
-      $("installBtn").textContent = tr("iosInstall");
-      return;
-    }
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
-    installPrompt = null;
-    bar.hidden = true;
-    if (outcome !== "accepted") store.set("installDismissed", true);
-  };
-  $("installClose").onclick = () => {
-    bar.hidden = true;
-    store.set("installDismissed", true);
-  };
-  bar.hidden = false;
+const installWatchers = new Set();
+const installChanged = () => {
+  for (const fn of installWatchers) fn();
+  $("liteInstall").hidden = !window.zeffInstall.available();
+};
+function iosHint() {
+  $("installBtn").textContent = tr("iosInstall");
+  $("installClose").onclick = () => ($("install").hidden = true);
+  $("install").hidden = false;
 }
+window.zeffInstall = {
+  available: () => !installed() && (!!installPrompt || iosSafari),
+  async prompt() {
+    if (installPrompt) {
+      const p = installPrompt;
+      await p.prompt();
+      await p.userChoice.catch(() => null);
+      installPrompt = null;
+      installChanged();
+    } else if (iosSafari) iosHint();
+  },
+  subscribe(fn) {
+    installWatchers.add(fn);
+    return () => installWatchers.delete(fn);
+  },
+};
 addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   installPrompt = e;
-  offerInstall("prompt");
+  installChanged();
 });
-addEventListener("appinstalled", () => ($("install").hidden = true));
-// Safari on the iPhone/iPad (not in another browser there, which can't add to the home screen).
-if (/iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent)) setTimeout(() => offerInstall("ios"), 1500);
+addEventListener("appinstalled", () => {
+  installPrompt = null;
+  installChanged();
+});
+$("liteInstall").onclick = () => void window.zeffInstall.prompt();
+installChanged();
 
 if ("serviceWorker" in navigator) {
   const hadController = !!navigator.serviceWorker.controller;

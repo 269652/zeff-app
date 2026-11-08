@@ -4,7 +4,7 @@
   --fg: #1f1f23;
   --muted: #5f5f69;
   --line: #e2e2e8;
-  --accent: #6d28d9;
+  --accent: #18181b;
   --ok: #15803d;
   --warn: #b45309;
   --bad: #b91c1c;
@@ -18,7 +18,7 @@
     --fg: #ececf1;
     --muted: #a1a1ab;
     --line: #34343a;
-    --accent: #a78bfa;
+    --accent: #fafafa;
     --ok: #4ade80;
     --warn: #fbbf24;
     --bad: #f87171;
@@ -91,3 +91,7 @@ body.full { overflow: hidden; }
 .install-x { font: inherit; color: inherit; background: rgba(255,255,255,.15); border: 0; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; }
 .install-go:focus-visible, .install-x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (prefers-color-scheme: dark) { .install { color: #17171a; } .install-x { background: rgba(0,0,0,.12); } }
+.icon-btn { font: inherit; font-size: 22px; line-height: 1; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.install { color: var(--bg); }
+.install .install-go { cursor: default; }
