@@ -314,7 +314,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "7";
+const APP_VERSION = "8";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -410,6 +410,25 @@ document.addEventListener("visibilitychange", () => document.visibilityState ===
 addEventListener("online", tryConnect);
 setInterval(() => document.visibilityState === "visible" && tryConnect(), 20000);
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+// The service worker (the app offline). Chrome checks for a new one only now and then — an old app stayed on the phone
+// through many reloads (2026-11-08). So we ask each time the app opens or comes back to the front, and when a new one
+// takes over, the page loads once more: you see the new version at once (not while a pairing link is being read).
+if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloaded) return; // the first install: nothing old on screen
+    reloaded = true;
+    location.reload();
+  });
+  navigator.serviceWorker
+    .register("sw.js", { updateViaCache: "none" })
+    .then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      check();
+      document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && check());
+    })
+    .catch(() => {});
+}
 render();
 tryConnect();
