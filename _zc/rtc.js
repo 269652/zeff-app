@@ -148,6 +148,8 @@ export async function connectTo(pairing, host, timeoutMs = 8000) {
         dc.send(JSON.stringify({ t: "auth", device: pairing.device, mac: await hmac(pairing.secret, `${msg.nonce}|${ufrag}`) }));
       } else if (msg.t === "welcome") {
         welcomed = true;
+        // What the PC's launcher can do (an older one says nothing: no Zeff through the connection).
+        conn.proxy = msg.proxy === true;
         clearTimeout(timer);
         resolve(conn);
       } else if (msg.t === "denied") {

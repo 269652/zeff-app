@@ -314,7 +314,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "9";
+const APP_VERSION = "10";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -335,7 +335,8 @@ async function tryConnect() {
       showZeff(false);
       render();
     });
-    showZeff(true);
+    // All of Zeff only from a launcher that carries it (an older one would leave the frame empty).
+    showZeff(c.proxy === true);
     flush();
     c.send({ t: "sync", account });
   } catch (err) {
