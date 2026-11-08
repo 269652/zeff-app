@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#6d28d9" />
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:" />
+    <title>Zeff</title>
+    <link rel="manifest" href="/_zc/manifest.webmanifest" />
+    <link rel="icon" href="/_zc/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/_zc/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/_zc/app.css" />
+  </head>
+  <body>
+    <!-- Zeff itself, while this phone (or computer) is connected to it: every request of the frame goes through the
+         connection (the service worker hands it to this page, the page to Zeff on the PC). -->
+    <iframe id="zeff" title="Zeff" hidden></iframe>
+    <div id="lite">
+    <header>
+      <h1>Zeff</h1>
+      <label id="accountBox" class="account" hidden><span id="accountDot" class="dot"></span><span class="sr" data-t="Account"></span><select id="account"></select></label>
+      <button id="status" class="status" type="button" aria-live="polite"><span class="dot"></span><span id="statusText"></span></button>
+    </header>
+    <main>
+      <section id="welcome" hidden>
+        <h2 data-t="Zeff on your phone"></h2>
+        <p data-t="welcome1"></p>
+      </section>
+      <section id="lna" class="notice" hidden>
+        <p id="lnaText"></p>
+        <button id="lnaAllow" class="button primary" type="button" data-t="Allow home network access"></button>
+      </section>
+      <section id="list" hidden>
+        <p id="lockedNote" class="notice" hidden></p>
+        <ul id="open" class="todos"></ul>
+        <p id="empty" class="muted" hidden></p>
+        <details id="doneBox">
+          <summary id="doneTitle"></summary>
+          <ul id="done" class="todos"></ul>
+        </details>
+      </section>
+      <details id="setup" class="setup" hidden>
+        <summary id="setupTitle"></summary>
+        <div id="checks">
+          <p id="lastError" class="muted small" hidden></p>
+          <pre id="diag" class="diag" hidden></pre>
+          <p data-t="checksIntro"></p>
+          <ul>
+            <li data-t="check1"></li>
+            <li data-t="check2"></li>
+            <li data-t="check3"></li>
+            <li data-t="check4"></li>
+          </ul>
+          <h3 data-t="No Zeff on your PC yet?"></h3>
+        </div>
+        <ol class="steps">
+          <li>
+            <span data-t="install1"></span>
+            <span class="buttons">
+              <a class="button primary" href="https://getzeff.com/#download" target="_blank" rel="noopener" data-t="Download page"></a>
+              <button id="shareLink" class="button" type="button" hidden data-t="Send the link to my PC"></button>
+            </span>
+          </li>
+          <li data-t="install2"></li>
+          <li data-t="install3"></li>
+        </ol>
+        <p class="muted" data-t="welcome4"></p>
+      </details>
+    </main>
+    <footer id="foot" class="muted"></footer>
+    </div>
+    <script type="module" src="/_zc/app.js"></script>
+  </body>
+</html>

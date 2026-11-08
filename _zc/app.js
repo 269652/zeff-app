@@ -314,7 +314,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -331,8 +331,11 @@ async function tryConnect() {
       if (conn !== c) return;
       conn = null;
       state = "away";
+      dropRequests("connection closed");
+      showZeff(false);
       render();
     });
+    showZeff(true);
     flush();
     c.send({ t: "sync", account });
   } catch (err) {
@@ -359,7 +362,122 @@ function setAccounts(list) {
   if (account && !accounts.some((a) => a.id === account)) switchTo(list.find((a) => a.current)?.id ?? accounts[0].id);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Zeff itself in the frame: the service worker hands every request of the frame to this page (a MessagePort each); it
+// goes to the PC as "http", the answer comes back in parts ("http-head", "http-body", "http-end"). Cookies: this
+// page's (the frame shares them) go along; the ones Zeff sets are kept here (not HttpOnly — a page sets them).
+// ---------------------------------------------------------------------------------------------------------------------
+
+const requests = new Map(); // id → the service worker's port for that request
+
+function dropRequests(why) {
+  for (const port of requests.values()) port.postMessage({ t: "error", status: 503, message: why });
+  requests.clear();
+}
+
+const b64 = (buf) => {
+  let s = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const unb64 = (str) => {
+  const bin = atob(str);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+};
+
+/** A cookie Zeff set ("name=v; Path=/; HttpOnly; Max-Age=…") → this origin's (no HttpOnly, no Domain, Secure). */
+function keepCookie(line) {
+  const parts = line.split(";").map((x) => x.trim()).filter(Boolean);
+  if (!parts.length || !parts[0].includes("=")) return;
+  const attrs = parts.slice(1).filter((a) => /^(path|expires|max-age|samesite)=/i.test(a));
+  if (!attrs.some((a) => /^path=/i.test(a))) attrs.push("Path=/");
+  try {
+    document.cookie = [parts[0], ...attrs, "Secure"].join("; ");
+  } catch {}
+}
+
+navigator.serviceWorker?.addEventListener("message", async (e) => {
+  const m = e.data;
+  if (m?.t !== "zeff-fetch" || !e.ports[0]) return;
+  const port = e.ports[0];
+  if (!conn) return port.postMessage({ t: "error", status: 503, message: "not connected" });
+  requests.set(m.id, port);
+  port.onmessage = ({ data }) => {
+    if (data?.t === "abort") {
+      requests.delete(m.id);
+      conn?.send({ t: "http-abort", id: m.id });
+    }
+  };
+  const headers = { ...m.headers };
+  if (document.cookie) headers.cookie = document.cookie;
+  conn.send({ t: "http", id: m.id, method: m.method, path: m.path, headers, body: m.body ? b64(m.body) : undefined });
+});
+
+function onHttp(msg) {
+  const port = requests.get(msg.id);
+  if (!port) return;
+  if (msg.t === "http-head") {
+    for (const c of msg.cookies ?? []) keepCookie(c);
+    port.postMessage({ t: "head", status: msg.status, statusText: msg.statusText, headers: msg.headers });
+  } else if (msg.t === "http-body") {
+    const chunk = unb64(msg.d);
+    port.postMessage({ t: "body", chunk }, [chunk]);
+  } else if (msg.t === "http-end") {
+    port.postMessage({ t: "end" });
+    requests.delete(msg.id);
+  } else if (msg.t === "http-error") {
+    port.postMessage({ t: "error", status: msg.status, message: msg.message });
+    requests.delete(msg.id);
+  }
+}
+
+/**
+ * Zeff in the frame while connected (at the address the app was opened with — /todos on the bare app), the app's own
+ * view of the todos while not. The frame's address follows into the address bar, so a reload stays where you were.
+ */
+const frame = $("zeff");
+function showZeff(on) {
+  // ("zeff.liteOnly": the app's own view even while connected — companion/check.cjs tests the todos and the queue so.)
+  if (on && store.get("liteOnly", false)) on = false;
+  frame.hidden = !on;
+  $("lite").hidden = on;
+  document.body.classList.toggle("full", on);
+  if (on && !frame.src) {
+    const here = location.pathname + location.search;
+    frame.src = here === "/" || here.startsWith("/_zc/") ? "/todos" : here;
+  }
+  if (!on) frame.removeAttribute("src");
+}
+frame.addEventListener("load", () => {
+  try {
+    const w = frame.contentWindow;
+    if (w?.location.origin !== location.origin) return;
+    history.replaceState(null, "", w.location.pathname + w.location.search + w.location.hash);
+    document.title = w.document.title || "Zeff";
+    // Keep following the frame's own navigations (Next changes its address without loading).
+    const sync = () => {
+      try {
+        history.replaceState(null, "", w.location.pathname + w.location.search + w.location.hash);
+        document.title = w.document.title || "Zeff";
+      } catch {}
+    };
+    w.addEventListener("popstate", sync);
+    for (const k of ["pushState", "replaceState"]) {
+      const orig = w.history[k].bind(w.history);
+      w.history[k] = (...a) => {
+        const r = orig(...a);
+        sync();
+        return r;
+      };
+    }
+  } catch {}
+});
+
 function onMessage(msg) {
+  if (msg.t?.startsWith("http-")) return onHttp(msg);
   if (msg.t === "snapshot" && Array.isArray(msg.todos)) {
     setAccounts(msg.accounts);
     // The first answer names the account (the PC's own) when the phone hadn't picked one.
@@ -422,7 +540,7 @@ if ("serviceWorker" in navigator) {
     location.reload();
   });
   navigator.serviceWorker
-    .register("sw.js", { updateViaCache: "none" })
+    .register("/sw.js", { scope: "/", updateViaCache: "none" })
     .then((reg) => {
       const check = () => reg.update().catch(() => {});
       check();

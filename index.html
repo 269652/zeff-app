@@ -7,12 +7,16 @@
     <meta name="referrer" content="no-referrer" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:" />
     <title>Zeff</title>
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="manifest" href="/_zc/manifest.webmanifest" />
+    <link rel="icon" href="/_zc/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/_zc/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/_zc/app.css" />
   </head>
   <body>
+    <!-- Zeff itself, while this phone (or computer) is connected to it: every request of the frame goes through the
+         connection (the service worker hands it to this page, the page to Zeff on the PC). -->
+    <iframe id="zeff" title="Zeff" hidden></iframe>
+    <div id="lite">
     <header>
       <h1>Zeff</h1>
       <label id="accountBox" class="account" hidden><span id="accountDot" class="dot"></span><span class="sr" data-t="Account"></span><select id="account"></select></label>
@@ -65,6 +69,7 @@
       </details>
     </main>
     <footer id="foot" class="muted"></footer>
-    <script type="module" src="app.js"></script>
+    </div>
+    <script type="module" src="/_zc/app.js"></script>
   </body>
 </html>
