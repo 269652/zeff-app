@@ -33,6 +33,7 @@ const WORDS = {
   "Home network access": ["Home network access", "Heimnetz-Zugriff"],
   "This phone sends from": ["This phone sends from", "Das Handy sendet von"],
   Steps: ["Steps", "Ablauf"],
+  "Loading Zeff …": ["Loading Zeff …", "Zeff lädt …"],
   "Last attempt": ["Last attempt", "Letzter Versuch"],
   "Download page": ["Download page", "Zum Download"],
   "Send the link to my PC": ["Send the link to my PC", "Link an meinen PC schicken"],
@@ -314,7 +315,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "10";
+const APP_VERSION = "11";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -332,9 +333,13 @@ async function tryConnect() {
       conn = null;
       state = "away";
       dropRequests("connection closed");
-      showZeff(false);
       render();
+      // Zeff stays on screen through a short break (the next try is right away); only a longer one shows the app's own view.
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => !conn && showZeff(false), 12000);
+      setTimeout(tryConnect, 500);
     });
+    clearTimeout(hideTimer);
     // All of Zeff only from a launcher that carries it (an older one would leave the frame empty).
     showZeff(c.proxy === true);
     flush();
@@ -440,19 +445,25 @@ function onHttp(msg) {
  * view of the todos while not. The frame's address follows into the address bar, so a reload stays where you were.
  */
 const frame = $("zeff");
+let hideTimer = null;
 function showZeff(on) {
   // ("zeff.liteOnly": the app's own view even while connected — companion/check.cjs tests the todos and the queue so.)
   if (on && store.get("liteOnly", false)) on = false;
   frame.hidden = !on;
   $("lite").hidden = on;
   document.body.classList.toggle("full", on);
-  if (on && !frame.src) {
+  if (on && !frame.getAttribute("src")) {
     const here = location.pathname + location.search;
+    $("frameLoading").hidden = false;
     frame.src = here === "/" || here.startsWith("/_zc/") ? "/todos" : here;
   }
-  if (!on) frame.removeAttribute("src");
+  if (!on) {
+    frame.removeAttribute("src");
+    $("frameLoading").hidden = true;
+  }
 }
 frame.addEventListener("load", () => {
+  $("frameLoading").hidden = true;
   try {
     const w = frame.contentWindow;
     if (w?.location.origin !== location.origin) return;

@@ -125,11 +125,19 @@ export async function connectTo(pairing, host, timeoutMs = 8000) {
         reject(fail("timeout"));
       }
     }, timeoutMs);
+    // "disconnected" once connected is often a moment only (a busy channel, Wi-Fi napping): ended only when it lasts.
+    let grace = null;
     pc.addEventListener("connectionstatechange", () => {
-      if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+      const st = pc.connectionState;
+      clearTimeout(grace);
+      if (st === "disconnected" && welcomed) {
+        grace = setTimeout(() => pc.connectionState !== "connected" && close(), 15000);
+        return;
+      }
+      if (["failed", "closed", "disconnected"].includes(st)) {
         if (!welcomed) {
           clearTimeout(timer);
-          reject(fail(pc.connectionState));
+          reject(fail(st));
         }
         close();
       }
