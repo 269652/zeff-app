@@ -1,6 +1,6 @@
 // The app's files on the phone, so it opens without a network (away from home): served from the cache, and
 // fetched anew in the background whenever there is one — the next start has the new version.
-const CACHE = "zeff-companion-v4";
+const CACHE = "zeff-companion-v5";
 const FILES = ["./", "index.html", "app.js", "rtc.js", "app.css", "manifest.webmanifest", "icon.svg", "icon-192.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {

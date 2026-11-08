@@ -27,6 +27,7 @@ const WORDS = {
   check4: ["Still nothing: pair again (Zeff icon → Phone → Pair a phone) — the PC's address may have changed.", "Immer noch nichts: neu koppeln (Zeff-Symbol → Phone → Pair a phone) — die Adresse des PCs kann sich geändert haben."],
   "No Zeff on your PC yet?": ["No Zeff on your PC yet?", "Noch kein Zeff auf dem PC?"],
   install1: ["On your PC (Windows or Linux), download Zeff from getzeff.com.", "Lade Zeff auf deinem PC (Windows oder Linux) von getzeff.com herunter."],
+  "Last attempt": ["Last attempt", "Letzter Versuch"],
   "Download page": ["Download page", "Zum Download"],
   "Send the link to my PC": ["Send the link to my PC", "Link an meinen PC schicken"],
   linkCopied: ["Link copied", "Link kopiert"],
@@ -213,6 +214,8 @@ function renderSetup() {
   if (!mode) return void (setupMode = null);
   $("setupTitle").textContent = tr(mode === "new" ? "setupNew" : "setupHelp");
   $("checks").hidden = mode !== "help";
+  $("lastError").hidden = mode !== "help" || !lastError;
+  $("lastError").textContent = lastError ? `${tr("Last attempt")}: ${lastError}` : "";
   // Opened or folded when the situation changes — not over your own click on it.
   if (mode !== setupMode) box.open = mode === "new" || (!snapshot.at && !accounts.some((a) => snapshotOf(a.id).at));
   setupMode = mode;
@@ -251,6 +254,7 @@ $("account").onchange = (e) => switchTo(e.target.value);
 // ---------------------------------------------------------------------------------------------------------------------
 
 let trying = false;
+let lastError = null;
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   trying = true;
@@ -271,6 +275,7 @@ async function tryConnect() {
     c.send({ t: "sync", account });
   } catch (err) {
     state = err.message === "denied" ? "denied" : "away";
+    lastError = `${new Date().toLocaleTimeString()} — ${err.detail ?? err.message}`;
     if (state === "denied") {
       store.set("pairing", null);
       pairing = null;

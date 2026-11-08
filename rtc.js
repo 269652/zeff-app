@@ -159,7 +159,12 @@ export async function connect(pairing, timeoutMs = 6000) {
     return first;
   } catch (agg) {
     const errs = agg.errors ?? [agg];
-    throw errs.find((e) => e.message === "denied") ?? errs[0];
+    const denied = errs.find((e) => e.message === "denied");
+    if (denied) throw denied;
+    // What each address said ("192.168.178.23: timeout") — shown in the app's help.
+    const err = new Error(errs[0]?.message ?? "failed");
+    err.detail = pairing.hosts.map((h, i) => `${h}: ${errs[i]?.message ?? "?"}`).join(" · ");
+    throw err;
   }
 }
 
