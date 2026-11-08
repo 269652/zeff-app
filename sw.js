@@ -7,7 +7,7 @@
 // 2. Zeff itself in the app's frame: every request the frame makes (its pages, scripts, data, Server Actions, the live
 //    events) is handed to the app's page, which asks Zeff on the PC through its WebRTC connection and streams the
 //    answer back here. The frame's address stays app.getzeff.com/… — Zeff's own paths.
-const CACHE = "zeff-companion-v13";
+const CACHE = "zeff-companion-v14";
 /** Zeff's own files (/_next/…) as last fetched, each with its hash — kept across versions of the app. */
 const FILES = "zeff-files";
 const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
@@ -146,7 +146,8 @@ async function throughZeff(e) {
           out = a;
           e.waitUntil(caches.open(FILES).then((c) => c.put(url.href, new Response(b, { status: 200, headers: [...data.headers, ["x-zc-hash", data.hash]] }))).catch(() => {}));
         }
-        resolve(new Response(out, { status: data.status, statusText: data.statusText, headers: data.headers }));
+        // (The hash rides along: the background check below tells a changed file by it.)
+        resolve(new Response(out, { status: data.status, statusText: data.statusText, headers: data.hash ? [...data.headers, ["x-zc-hash", data.hash]] : data.headers }));
       } else if (data.t === "body") ctl.enqueue(new Uint8Array(data.chunk));
       else if (data.t === "end") {
         try {
@@ -178,7 +179,27 @@ self.addEventListener("fetch", (e) => {
     (async () => {
       if (req.destination === "iframe") return throughZeff(e);
       const client = e.clientId ? await self.clients.get(e.clientId) : null;
-      if (client?.frameType === "nested") return throughZeff(e);
+      if (client?.frameType === "nested") {
+        // One of Zeff's own files we keep: at once from here (a page is usable without waiting for the PC), checked in the
+        // background — changed (Zeff's code moved on), it's kept anew and the frame loads once more.
+        if (req.method === "GET" && url.pathname.startsWith("/_next/")) {
+          const kept = await (await caches.open(FILES)).match(url.href);
+          if (kept) {
+            const had = kept.headers.get("x-zc-hash");
+            e.waitUntil(
+              throughZeff(e)
+                .then(async (fresh) => {
+                  const now = fresh.headers.get("x-zc-hash");
+                  await fresh.arrayBuffer().catch(() => {}); // (read to the end: the copy for the cache is written)
+                  if (now && had && now !== had) for (const c of await self.clients.matchAll({ type: "window" })) c.postMessage({ t: "zeff-stale" });
+                })
+                .catch(() => {}),
+            );
+            return kept;
+          }
+        }
+        return throughZeff(e);
+      }
       // The app's page itself asking (an update check of "/"): the server.
       return fetch(req);
     })(),

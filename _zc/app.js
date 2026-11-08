@@ -315,7 +315,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "12";
+const APP_VERSION = "13";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -374,6 +374,7 @@ function setAccounts(list) {
 // page's (the frame shares them) go along; the ones Zeff sets are kept here (not HttpOnly — a page sets them).
 // ---------------------------------------------------------------------------------------------------------------------
 
+let staleTimer = null;
 const requests = new Map(); // id → the service worker's port for that request
 
 function dropRequests(why) {
@@ -407,6 +408,16 @@ function keepCookie(line) {
 
 navigator.serviceWorker?.addEventListener("message", async (e) => {
   const m = e.data;
+  // Zeff's code moved on (a kept file changed on the PC): the frame loads once more, with the new files.
+  if (m?.t === "zeff-stale") {
+    clearTimeout(staleTimer);
+    staleTimer = setTimeout(() => {
+      try {
+        frame.contentWindow?.location.reload();
+      } catch {}
+    }, 1500);
+    return;
+  }
   if (m?.t !== "zeff-fetch" || !e.ports[0]) return;
   const port = e.ports[0];
   if (!conn) return port.postMessage({ t: "error", status: 503, message: "not connected" });
