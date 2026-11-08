@@ -315,7 +315,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "13";
+const APP_VERSION = "14";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -422,6 +422,7 @@ navigator.serviceWorker?.addEventListener("message", async (e) => {
   const port = e.ports[0];
   if (!conn) return port.postMessage({ t: "error", status: 503, message: "not connected" });
   requests.set(m.id, port);
+  netStart(m.id, m.method, m.path);
   port.onmessage = ({ data }) => {
     if (data?.t === "abort") {
       requests.delete(m.id);
@@ -433,9 +434,58 @@ navigator.serviceWorker?.addEventListener("message", async (e) => {
   conn.send({ t: "http", id: m.id, method: m.method, path: m.path, headers, body: m.body ? b64(m.body) : undefined });
 });
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Diagnosis (app.getzeff.com/?debug=1 turns it on, ?debug=0 off): a pill with the requests under way; tapped, the last
+// ones — path, status, time to the first answer and to the end, size — and those still waiting, to see what hangs.
+// ---------------------------------------------------------------------------------------------------------------------
+
+{
+  const q = new URLSearchParams(location.search).get("debug");
+  if (q === "1" || q === "0") store.set("debug", q === "1");
+}
+const DEBUG = store.get("debug", false) === true;
+const net = [];
+function netStart(id, method, path) {
+  if (!DEBUG) return;
+  net.unshift({ id, method, path, t0: performance.now(), head: null, end: null, status: null, bytes: 0, err: null });
+  net.length = Math.min(net.length, 80);
+  drawNet();
+}
+function netNote(msg) {
+  if (!DEBUG) return;
+  const r = net.find((x) => x.id === msg.id);
+  if (!r) return;
+  const now = performance.now() - r.t0;
+  if (msg.t === "http-head") Object.assign(r, { head: now, status: msg.same ? `${msg.status}=` : msg.status });
+  else if (msg.t === "http-body") r.bytes += Math.floor((msg.d?.length ?? 0) * 0.75);
+  else if (msg.t === "http-end") r.end = now;
+  else if (msg.t === "http-error") Object.assign(r, { end: now, err: msg.message ?? "error" });
+  drawNet();
+}
+let netPill = null;
+let netPanel = null;
+function drawNet() {
+  if (!DEBUG) return;
+  if (!netPill) {
+    netPill = el("button", { type: "button", className: "net-pill", onclick: () => ((netPanel.hidden = !netPanel.hidden), drawNet()) });
+    netPanel = el("pre", { className: "net-panel", hidden: true });
+    document.body.append(netPill, netPanel);
+    setInterval(drawNet, 500);
+  }
+  const open = net.filter((r) => r.end === null);
+  netPill.textContent = `⇅ ${open.length}${conn ? "" : " ✕"}`;
+  if (netPanel.hidden) return;
+  const ms = (v) => (v === null ? "…" : `${Math.round(v)}`);
+  netPanel.textContent = [`App ${APP_VERSION} · ${conn ? `live ${conn.host}` : state} · waiting ${open.length}`, ...net.map((r) => {
+    const age = r.end === null ? ` (${Math.round(performance.now() - r.t0)} ms so far)` : "";
+    return `${r.err ? "✗" : r.status ?? "…"} ${r.method} ${r.path.slice(0, 60)}  ${ms(r.head)}/${ms(r.end)} ms ${Math.round(r.bytes / 1024)} KB${age}${r.err ? ` ${r.err}` : ""}`;
+  })].join("\n");
+}
+
 function onHttp(msg) {
   const port = requests.get(msg.id);
   if (!port) return;
+  netNote(msg);
   if (msg.t === "http-head") {
     for (const c of msg.cookies ?? []) keepCookie(c);
     port.postMessage({ t: "head", status: msg.status, statusText: msg.statusText, headers: msg.headers, zgz: !!msg.zgz, same: !!msg.same, hash: msg.hash ?? null });

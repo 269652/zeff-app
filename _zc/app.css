@@ -84,3 +84,5 @@ body.full { overflow: hidden; }
 .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.net-pill { position: fixed; top: 6px; left: 50%; transform: translateX(-50%); z-index: 20; font: 12px ui-monospace, monospace; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); opacity: 0.85; }
+.net-panel { position: fixed; left: 0; right: 0; top: 34px; max-height: 60vh; overflow: auto; z-index: 20; margin: 0 8px; padding: 8px; font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
