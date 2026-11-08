@@ -7,7 +7,9 @@
 // 2. Zeff itself in the app's frame: every request the frame makes (its pages, scripts, data, Server Actions, the live
 //    events) is handed to the app's page, which asks Zeff on the PC through its WebRTC connection and streams the
 //    answer back here. The frame's address stays app.getzeff.com/… — Zeff's own paths.
-const CACHE = "zeff-companion-v12";
+const CACHE = "zeff-companion-v13";
+/** Zeff's own files (/_next/…) as last fetched, each with its hash — kept across versions of the app. */
+const FILES = "zeff-files";
 const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
 const WAIT_MS = 4000;
 
@@ -24,7 +26,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FILES).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -113,6 +115,10 @@ async function throughZeff(e) {
   headers["sec-fetch-dest"] = req.destination || "empty";
   headers["sec-fetch-mode"] = req.mode;
   if (req.referrer && req.referrer !== "about:client") headers.referer = req.referrer;
+  // Zeff's own files (/_next/…) kept here: asked with the hash of the one we have — "same" comes back without a body.
+  const kept = req.method === "GET" && url.pathname.startsWith("/_next/") ? await (await caches.open(FILES)).match(url.href) : undefined;
+  const keptHash = kept?.headers.get("x-zc-hash");
+  if (keptHash) headers["x-zc-have"] = keptHash;
   const { port1, port2 } = new MessageChannel();
   const id = `${Date.now().toString(36)}-${++seq}`;
   page.postMessage({ t: "zeff-fetch", id, method: req.method, path: url.pathname + url.search, headers, body }, body ? [port2, body] : [port2]);
@@ -127,9 +133,20 @@ async function throughZeff(e) {
     port1.onmessage = ({ data }) => {
       if (data.t === "head") {
         headed = true;
+        // The one we keep is still Zeff's: answered from here.
+        if (data.same && kept) return resolve(kept);
         const noBody = req.method === "HEAD" || [101, 204, 205, 304].includes(data.status);
         const html = req.destination === "iframe" && data.headers.some(([k, v]) => k === "content-type" && /text\/html/i.test(v));
-        resolve(new Response(noBody ? null : html ? withFrameScript(stream) : stream, { status: data.status, statusText: data.statusText, headers: data.headers }));
+        // Gzipped on the PC (text): unpacked as it comes.
+        let out = noBody ? null : data.zgz ? stream.pipeThrough(new DecompressionStream("gzip")) : stream;
+        if (out && html) out = withFrameScript(out);
+        // One of Zeff's own files: kept, with its hash, for the next time.
+        if (out && data.hash && req.method === "GET") {
+          const [a, b] = out.tee();
+          out = a;
+          e.waitUntil(caches.open(FILES).then((c) => c.put(url.href, new Response(b, { status: 200, headers: [...data.headers, ["x-zc-hash", data.hash]] }))).catch(() => {}));
+        }
+        resolve(new Response(out, { status: data.status, statusText: data.statusText, headers: data.headers }));
       } else if (data.t === "body") ctl.enqueue(new Uint8Array(data.chunk));
       else if (data.t === "end") {
         try {

@@ -315,7 +315,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -427,7 +427,7 @@ function onHttp(msg) {
   if (!port) return;
   if (msg.t === "http-head") {
     for (const c of msg.cookies ?? []) keepCookie(c);
-    port.postMessage({ t: "head", status: msg.status, statusText: msg.statusText, headers: msg.headers });
+    port.postMessage({ t: "head", status: msg.status, statusText: msg.statusText, headers: msg.headers, zgz: !!msg.zgz, same: !!msg.same, hash: msg.hash ?? null });
   } else if (msg.t === "http-body") {
     const chunk = unb64(msg.d);
     port.postMessage({ t: "body", chunk }, [chunk]);
