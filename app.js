@@ -27,6 +27,9 @@ const WORDS = {
   check4: ["Still nothing: pair again (Zeff icon → Phone → Pair a phone) — the PC's address may have changed.", "Immer noch nichts: neu koppeln (Zeff-Symbol → Phone → Pair a phone) — die Adresse des PCs kann sich geändert haben."],
   "No Zeff on your PC yet?": ["No Zeff on your PC yet?", "Noch kein Zeff auf dem PC?"],
   install1: ["On your PC (Windows or Linux), download Zeff from getzeff.com.", "Lade Zeff auf deinem PC (Windows oder Linux) von getzeff.com herunter."],
+  "Allow home network access": ["Allow home network access", "Zugriff aufs Heimnetz erlauben"],
+  lnaPrompt: ["Chrome asks before a website may reach devices in your home network — Zeff on your PC is one. Allow it once, and the phone connects.", "Chrome fragt, bevor eine Website Geräte in deinem Heimnetz erreichen darf — Zeff auf deinem PC ist so eines. Einmal erlauben, dann verbindet sich das Handy."],
+  lnaDenied: ["Chrome blocks this app from your home network, so it can't reach your PC. Allow it again: tap the icon left of the address → Permissions (Site settings) → Local network access → Allow, then reload.", "Chrome sperrt diese App für dein Heimnetz, darum erreicht sie deinen PC nicht. Wieder erlauben: auf das Symbol links neben der Adresse tippen → Berechtigungen (Website-Einstellungen) → Zugriff auf lokales Netzwerk → Zulassen, dann neu laden."],
   "Last attempt": ["Last attempt", "Letzter Versuch"],
   "Download page": ["Download page", "Zum Download"],
   "Send the link to my PC": ["Send the link to my PC", "Link an meinen PC schicken"],
@@ -171,6 +174,9 @@ function todoItem(t) {
 }
 
 function render() {
+  $("lna").hidden = !pairing || conn !== null || state !== "away" || !(lna === "prompt" || lna === "denied");
+  $("lnaText").textContent = tr(lna === "denied" ? "lnaDenied" : "lnaPrompt");
+  $("lnaAllow").hidden = lna !== "prompt";
   const s = $("status");
   s.className = `status ${state === "none" ? "away" : state}`;
   const waiting = outbox.length ? ` · ${tr("waiting", { n: outbox.length })}` : "";
@@ -253,10 +259,50 @@ $("account").onchange = (e) => switchTo(e.target.value);
 // while it's away (at home the PC answers within a second; away nothing does, and that costs nothing)
 // ---------------------------------------------------------------------------------------------------------------------
 
+// Chrome's Local Network Access: a public website (this one) may reach devices in the home network — Zeff on the PC — only
+// with the "local network" permission. Without it, WebRTC to the PC's address fails silently (a timeout; nothing reaches
+// the PC). "granted" | "prompt" | "denied", or null where the browser has no such permission (nothing to ask).
+let lna = null;
+async function lnaPermission() {
+  for (const name of ["local-network-access", "local-network"]) {
+    try {
+      const st = await navigator.permissions.query({ name });
+      if (!st.__watched) {
+        st.__watched = true;
+        st.addEventListener("change", () => {
+          lna = st.state;
+          render();
+          if (lna === "granted") tryConnect();
+        });
+      }
+      return st.state;
+    } catch {
+      // not a permission this browser knows
+    }
+  }
+  return null;
+}
+
+/**
+ * Ask for it: a request to the PC that names the local network as its target is what makes Chrome ask you. The request
+ * itself goes nowhere (nothing answers on that port) — only the permission matters.
+ */
+async function askLna() {
+  if (!pairing) return;
+  await Promise.allSettled(
+    pairing.hosts.map((h) => fetch(`http://${h.includes(":") ? `[${h}]` : h}:${pairing.port}/`, { targetAddressSpace: "local", mode: "no-cors", cache: "no-store" })),
+  );
+  lna = await lnaPermission();
+  render();
+  tryConnect();
+}
+
 let trying = false;
 let lastError = null;
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
+  // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
+  lna = await lnaPermission();
   trying = true;
   state = "connecting";
   render();
@@ -336,6 +382,8 @@ addEventListener("hashchange", () => {
   render();
   tryConnect();
 });
+
+$("lnaAllow").onclick = () => askLna();
 
 $("status").onclick = () => {
   if (conn) conn.send({ t: "sync" });
