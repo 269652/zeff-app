@@ -30,6 +30,9 @@ const WORDS = {
   "Allow home network access": ["Allow home network access", "Zugriff aufs Heimnetz erlauben"],
   lnaPrompt: ["Chrome asks before a website may reach devices in your home network — Zeff on your PC is one. Allow it once, and the phone connects.", "Chrome fragt, bevor eine Website Geräte in deinem Heimnetz erreichen darf — Zeff auf deinem PC ist so eines. Einmal erlauben, dann verbindet sich das Handy."],
   lnaDenied: ["Chrome blocks this app from your home network, so it can't reach your PC. Allow it again: tap the icon left of the address → Permissions (Site settings) → Local network access → Allow, then reload.", "Chrome sperrt diese App für dein Heimnetz, darum erreicht sie deinen PC nicht. Wieder erlauben: auf das Symbol links neben der Adresse tippen → Berechtigungen (Website-Einstellungen) → Zugriff auf lokales Netzwerk → Zulassen, dann neu laden."],
+  "Home network access": ["Home network access", "Heimnetz-Zugriff"],
+  "This phone sends from": ["This phone sends from", "Das Handy sendet von"],
+  Steps: ["Steps", "Ablauf"],
   "Last attempt": ["Last attempt", "Letzter Versuch"],
   "Download page": ["Download page", "Zum Download"],
   "Send the link to my PC": ["Send the link to my PC", "Link an meinen PC schicken"],
@@ -174,9 +177,10 @@ function todoItem(t) {
 }
 
 function render() {
-  $("lna").hidden = !pairing || conn !== null || state !== "away" || !(lna === "prompt" || lna === "denied");
+  $("lna").hidden = !pairing || conn !== null || state !== "away" || lna === "granted";
   $("lnaText").textContent = tr(lna === "denied" ? "lnaDenied" : "lnaPrompt");
-  $("lnaAllow").hidden = lna !== "prompt";
+  // The button whenever it isn't granted: asking again costs nothing; where the browser can't say, it may still ask.
+  $("lnaAllow").hidden = lna === "denied" || lna === "granted";
   const s = $("status");
   s.className = `status ${state === "none" ? "away" : state}`;
   const waiting = outbox.length ? ` · ${tr("waiting", { n: outbox.length })}` : "";
@@ -222,6 +226,16 @@ function renderSetup() {
   $("checks").hidden = mode !== "help";
   $("lastError").hidden = mode !== "help" || !lastError;
   $("lastError").textContent = lastError ? `${tr("Last attempt")}: ${lastError}` : "";
+  // The diagnosis: what the app knows about this phone and its last attempt (to read out or send).
+  const chrome = /Chrome\/(\d+[.\d]*)/.exec(navigator.userAgent)?.[1] ?? navigator.userAgent.slice(0, 60);
+  $("diag").hidden = mode !== "help";
+  $("diag").textContent = [
+    `App ${APP_VERSION} · Chrome ${chrome} · ${navigator.connection?.type ?? "?"}`,
+    `${tr("Home network access")}: ${lna ?? "–"}`,
+    `PC: ${pairing?.hosts.join(", ") ?? "–"} : ${pairing?.port ?? "–"}`,
+    lastTrace ? `${tr("This phone sends from")}: ${lastTrace.candidates.join(" | ") || "–"}` : "",
+    lastTrace ? `${tr("Steps")}: ${lastTrace.states.join(" → ") || "–"}` : "",
+  ].filter(Boolean).join("\n");
   // Opened or folded when the situation changes — not over your own click on it.
   if (mode !== setupMode) box.open = mode === "new" || (!snapshot.at && !accounts.some((a) => snapshotOf(a.id).at));
   setupMode = mode;
@@ -299,6 +313,8 @@ async function askLna() {
 
 let trying = false;
 let lastError = null;
+let lastTrace = null;
+const APP_VERSION = "7";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -322,6 +338,7 @@ async function tryConnect() {
   } catch (err) {
     state = err.message === "denied" ? "denied" : "away";
     lastError = `${new Date().toLocaleTimeString()} — ${err.detail ?? err.message}`;
+    lastTrace = err.trace ?? null;
     if (state === "denied") {
       store.set("pairing", null);
       pairing = null;

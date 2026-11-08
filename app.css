@@ -77,3 +77,4 @@ footer { text-align: center; font-size: 13px; padding: 8px 16px 24px; }
 .small { font-size: 13px; overflow-wrap: anywhere; }
 #lna { margin-bottom: 12px; }
 #lna p { margin: 0 0 10px; }
+.diag { font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 8px 0; user-select: text; }

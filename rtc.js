@@ -71,6 +71,19 @@ function assembler() {
 export async function connectTo(pairing, host, timeoutMs = 8000) {
   const pc = new RTCPeerConnection({ iceServers: [] });
   const dc = pc.createDataChannel("zeff", { negotiated: true, id: 0 });
+  // What happened, for the app's diagnosis: our own candidates (where we send from), the ICE and connection states in turn.
+  const t0 = Date.now();
+  const trace = { candidates: [], states: [] };
+  const note = (what) => trace.states.push(`${((Date.now() - t0) / 1000).toFixed(1)}s ${what}`);
+  pc.addEventListener("icecandidate", (e) => {
+    if (e.candidate?.candidate) {
+      const parts = e.candidate.candidate.split(" ");
+      trace.candidates.push(`${parts[7] ?? "?"} ${parts[2]?.toLowerCase() ?? ""} ${parts[4] ?? ""}`);
+    } else if (!e.candidate) note("gathering done");
+  });
+  pc.addEventListener("iceconnectionstatechange", () => note(`ice ${pc.iceConnectionState}`));
+  pc.addEventListener("connectionstatechange", () => note(`conn ${pc.connectionState}`));
+  const fail = (message) => Object.assign(new Error(message), { trace });
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   const ufrag = /a=ice-ufrag:([^\r\n]+)/.exec(offer.sdp)?.[1];
@@ -109,14 +122,14 @@ export async function connectTo(pairing, host, timeoutMs = 8000) {
     const timer = setTimeout(() => {
       if (!welcomed) {
         close();
-        reject(new Error("timeout"));
+        reject(fail("timeout"));
       }
     }, timeoutMs);
     pc.addEventListener("connectionstatechange", () => {
       if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
         if (!welcomed) {
           clearTimeout(timer);
-          reject(new Error(pc.connectionState));
+          reject(fail(pc.connectionState));
         }
         close();
       }
@@ -164,6 +177,7 @@ export async function connect(pairing, timeoutMs = 6000) {
     // What each address said ("192.168.178.23: timeout") — shown in the app's help.
     const err = new Error(errs[0]?.message ?? "failed");
     err.detail = pairing.hosts.map((h, i) => `${h}: ${errs[i]?.message ?? "?"}`).join(" · ");
+    err.trace = errs.find((e) => e.trace)?.trace ?? null;
     throw err;
   }
 }
