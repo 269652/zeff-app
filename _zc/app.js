@@ -180,6 +180,7 @@ function todoItem(t) {
 }
 
 function render() {
+  for (const fn of offlineListeners) fn();
   $("lna").hidden = !pairing || conn !== null || state !== "away" || lna === "granted";
   $("lnaText").textContent = tr(lna === "denied" ? "lnaDenied" : "lnaPrompt");
   // The button whenever it isn't granted: asking again costs nothing; where the browser can't say, it may still ask.
@@ -191,7 +192,10 @@ function render() {
   s.hidden = state === "none";
   $("welcome").hidden = !!pairing && state !== "denied";
   renderSetup();
-  $("list").hidden = !pairing;
+  // The offline app (Todos, Workspace, Calendar from the phone's copy) once it's loaded; the plain todo list before.
+  $("list").hidden = !pairing || offlineMounted;
+  $("offlineApp").hidden = !pairing || !offlineMounted;
+  if (pairing && !offlineMounted) mountOfflineApp();
   renderAccounts();
   if (!pairing) return;
   const locked = account !== null && lockedAccounts.has(account);
@@ -317,7 +321,7 @@ async function askLna() {
 let trying = false;
 let lastError = null;
 let lastTrace = null;
-const APP_VERSION = "16";
+const APP_VERSION = "17";
 async function tryConnect() {
   if (!pairing || conn || trying || state === "denied") return;
   // (Tried either way: a browser may know the permission without enforcing it for WebRTC yet. The notice shows when it failed.)
@@ -362,7 +366,7 @@ async function tryConnect() {
 
 function setAccounts(list) {
   if (!Array.isArray(list) || !list.length) return;
-  accounts = list.map(({ id, name, color, locked }) => ({ id, name, color, locked }));
+  accounts = list.map(({ id, name, color, locked, prefix }) => ({ id, name, color, locked, prefix: prefix ?? "" }));
   store.set("accounts", accounts);
   lockedAccounts.clear();
   for (const a of list) if (a.locked) lockedAccounts.add(a.id);
@@ -382,6 +386,59 @@ const requests = new Map(); // id → the service worker's port for that request
 function dropRequests(why) {
   for (const port of requests.values()) port.postMessage({ t: "error", status: 503, message: why });
   requests.clear();
+  for (const r of jsonRequests.values()) r.fail(new Error(why));
+  jsonRequests.clear();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Zeff's JSON for the offline app (companion/offline): a request of this page's own over the same "http" messages —
+// the answer collected, unzipped and read. Rejected when the connection is gone, Zeff answers an error, or it takes long.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const jsonRequests = new Map(); // id → { status, zgz, parts, done, fail }
+function zeffJson(method, path, body) {
+  return new Promise((done, fail) => {
+    if (!conn) return fail(new Error("not connected"));
+    const id = `j-${newId()}`;
+    const timer = setTimeout(() => {
+      jsonRequests.delete(id);
+      conn?.send({ t: "http-abort", id });
+      fail(new Error("Zeff took too long"));
+    }, 120000);
+    jsonRequests.set(id, {
+      status: 0,
+      zgz: false,
+      parts: [],
+      done: (v) => (clearTimeout(timer), done(v)),
+      fail: (e) => (clearTimeout(timer), fail(e)),
+    });
+    const headers = { accept: "application/json" };
+    if (body !== undefined) headers["content-type"] = "application/json";
+    if (document.cookie) headers.cookie = document.cookie;
+    netStart(id, method, path);
+    conn.send({ t: "http", id, method, path, headers, body: body === undefined ? undefined : b64(new TextEncoder().encode(JSON.stringify(body))) });
+  });
+}
+async function onJson(msg) {
+  const r = jsonRequests.get(msg.id);
+  netNote(msg);
+  if (msg.t === "http-head") Object.assign(r, { status: msg.status, zgz: !!msg.zgz });
+  else if (msg.t === "http-body") r.parts.push(new Uint8Array(unb64(msg.d)));
+  else if (msg.t === "http-error") {
+    jsonRequests.delete(msg.id);
+    r.fail(new Error(msg.message ?? "error"));
+  } else if (msg.t === "http-end") {
+    jsonRequests.delete(msg.id);
+    try {
+      let blob = new Blob(r.parts);
+      if (r.zgz) blob = await new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).blob();
+      const data = JSON.parse(await blob.text());
+      if (r.status >= 400) r.fail(new Error(data?.error ?? `Zeff answered ${r.status}`));
+      else r.done(data);
+    } catch (err) {
+      r.fail(err);
+    }
+  }
 }
 
 const b64 = (buf) => {
@@ -485,6 +542,7 @@ function drawNet() {
 }
 
 function onHttp(msg) {
+  if (jsonRequests.has(msg.id)) return void onJson(msg);
   const port = requests.get(msg.id);
   if (!port) return;
   netNote(msg);
@@ -564,6 +622,8 @@ function onMessage(msg) {
       store.set("outbox", outbox);
     }
     store.set(`snapshot:${msg.account}`, { at: msg.at, todos: msg.todos });
+    // Something changed in Zeff (the launcher pushes on every change): the offline app fetches what did.
+    for (const fn of remoteListeners) fn();
     if (msg.account === account) snapshot = { at: msg.at, todos: msg.todos };
     render();
   } else if (msg.t === "locked") {
@@ -592,6 +652,39 @@ addEventListener("hashchange", () => {
   render();
   tryConnect();
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Zeff on the go (companion/offline, bundled to /_zc/offline.js): your todos, the Workspace and the calendar from the
+// phone's own copy — usable without the PC, edits queued and sent when it's reachable. It borrows the connection.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const offlineListeners = new Set();
+const remoteListeners = new Set();
+let offlineMounted = false;
+let offlineLoading = false;
+function mountOfflineApp() {
+  if (offlineLoading || offlineMounted) return;
+  offlineLoading = true;
+  import("/_zc/offline.js")
+    .then((m) => {
+      m.mountOffline($("offlineApp"), {
+        account: () => account,
+        prefix: () => accounts.find((a) => a.id === account)?.prefix ?? "",
+        transport: () => (conn && !(account && lockedAccounts.has(account)) ? zeffJson : null),
+        onChange: (fn) => (offlineListeners.add(fn), () => offlineListeners.delete(fn)),
+        onRemoteChange: (fn) => (remoteListeners.add(fn), () => remoteListeners.delete(fn)),
+        locked: () => account !== null && lockedAccounts.has(account),
+        accounts: () => accounts.map((a) => ({ id: a.id, prefix: a.prefix ?? "", locked: lockedAccounts.has(a.id) })),
+        showFull: () => conn && showZeff(true),
+      });
+      offlineMounted = true;
+      render();
+    })
+    .catch(() => {
+      // An older app version without it (or a failed load): the plain todo list stays.
+    })
+    .finally(() => (offlineLoading = false));
+}
 
 $("lnaAllow").onclick = () => askLna();
 

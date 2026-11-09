@@ -1,0 +1,89 @@
+/* Zeff on the go (companion/offline): the app's colours (app.css :root), phone first, a tablet gets more room. */
+.zo { width: 100%; max-width: 100vw; display: flex; flex-direction: column; min-height: calc(100dvh - 64px); }
+.zo-bar { position: sticky; top: 61px; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.zo-state { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+.zo-dot.on { background: var(--ok); }
+.zo-main { flex: 1; width: 100%; min-width: 0; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+.zo-page > * { min-width: 0; }
+.zo-page { width: 100%; min-width: 0; max-width: 760px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.zo-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.zo-tabs button { flex: 1; min-height: 56px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; }
+.zo-tabs button.on { color: #4f46e5; font-weight: 600; box-shadow: inset 0 3px 0 #4f46e5; }
+.zo-btn { font: inherit; font-size: 15px; min-height: 40px; padding: 6px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); align-self: flex-start; }
+.zo-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.zo-btn:disabled { opacity: 0.55; }
+.zo-danger { color: var(--bad); }
+.zo-back { align-self: flex-start; border: 0; background: none; color: var(--muted); font: inherit; padding: 6px 0; min-height: 40px; }
+.zo-error { margin: 8px 16px; color: var(--bad); font-size: 14px; }
+.zo-muted, .zo-empty { color: var(--muted); }
+.zo-empty { padding: 24px 16px; }
+.zo-h { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 10px 0 4px; }
+.zo-h span { font-weight: 400; margin-left: 4px; }
+summary.zo-h { list-style: none; cursor: pointer; }
+summary.zo-h::-webkit-details-marker { display: none; }
+summary.zo-h::before { content: "▸ "; }
+details[open] > summary.zo-h::before { content: "▾ "; }
+/* Inside the app's page (companion/app: its <main> is narrow and padded): the offline app runs edge to edge and uses a
+   tablet's width; the notes above it (home network, help) keep their margin. */
+main:has(> #offlineApp:not([hidden])) { max-width: none; padding: 12px 0 0; }
+main:has(> #offlineApp:not([hidden])) > :not(#offlineApp) { margin-left: 16px; margin-right: 16px; }
+.zo-red { color: var(--bad); }
+.zo-today { color: #4f46e5; }
+.zo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.zo-add { display: flex; gap: 8px; }
+.zo-add input { flex: 1; min-width: 0; }
+.zo input, .zo select, .zo textarea { font: inherit; font-size: 16px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 42px; }
+.zo input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; accent-color: #4f46e5; }
+.zo-todo { display: flex; align-items: flex-start; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.zo-todo input { margin-top: 2px; flex: none; }
+.zo-todo-text { flex: 1; min-width: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--fg); padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.zo-todo-text small, .zo-row small { color: var(--muted); font-size: 13px; }
+.zo-done { text-decoration: line-through; color: var(--muted); }
+.zo-flag { margin-right: 4px; }
+.zo-field { display: flex; flex-direction: column; gap: 4px; }
+.zo-field > span { font-size: 13px; color: var(--muted); }
+.zo-field output { padding: 8px 0; color: var(--muted); }
+.zo-check { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.zo-notes { margin: 0; padding-left: 18px; }
+.zo-notes small { color: var(--muted); }
+.zo-tree-row { display: flex; align-items: center; gap: 4px; }
+.zo-twist { width: 32px; min-height: 40px; border: 0; background: none; color: var(--muted); font-size: 14px; flex: none; }
+.zo-link { flex: 1; min-width: 0; min-height: 40px; border: 0; background: none; text-align: left; font: inherit; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zo-title { font-size: 22px !important; font-weight: 600; border: 0 !important; background: none !important; padding: 4px 0 !important; }
+.zo-body { display: flex; flex-direction: column; gap: 8px; }
+.zo-editor { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important; font-size: 15px !important; line-height: 1.5; }
+.zo-md { line-height: 1.55; overflow-wrap: anywhere; }
+.zo-md pre { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 14px; }
+.zo-md code { font-size: 0.9em; background: var(--card); border-radius: 4px; padding: 0 3px; }
+.zo-md blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.zo-md a { color: #4f46e5; }
+.zo-scroll { overflow-x: auto; }
+.zo-md table { border-collapse: collapse; font-size: 14px; }
+.zo-md td, .zo-md th { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.zo-row { width: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; text-align: left; font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 48px; }
+.zo-row strong { font-weight: 500; }
+.zo-row small { flex-basis: 100%; }
+.zo-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; align-self: flex-start; }
+.zo-seg button { font: inherit; font-size: 14px; border: 0; background: var(--card); color: var(--muted); padding: 6px 14px; min-height: 36px; }
+.zo-seg button.on { background: var(--accent); color: var(--bg); }
+.zo-board { min-width: 0; max-width: 100%; display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+.zo-col { flex: 0 0 min(80vw, 280px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; background: color-mix(in srgb, var(--card) 60%, var(--bg)); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.zo-col h3 { margin: 2px 4px 4px; font-size: 14px; }
+.zo-col h3 span { color: var(--muted); font-weight: 400; }
+.zo-card { text-align: left; font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 44px; }
+.zo-fields { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.zo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.zo-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px 2px 6px; font-size: 14px; }
+.zo-form { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.zo-actions { display: flex; gap: 8px; }
+.zo-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; background: #6b7280; }
+.zo-swatch.c-blue { background: #3b82f6; } .zo-swatch.c-green { background: #22c55e; } .zo-swatch.c-red { background: #ef4444; } .zo-swatch.c-orange { background: #f97316; }
+.zo-swatch.c-purple { background: #a855f7; } .zo-swatch.c-pink { background: #ec4899; } .zo-swatch.c-yellow { background: #eab308; } .zo-swatch.c-indigo { background: #6366f1; }
+.zo-conflict { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.zo-conflict p { margin: 4px 0 0; font-size: 14px; }
+.zo-seen { display: flex; flex-direction: column; height: calc(100dvh - 64px - 34px - 56px - env(safe-area-inset-bottom)); }
+.zo-seen-bar { display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+.zo-seen-bar small { color: var(--muted); }
+.zo-seen-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+@media (min-width: 768px) { .zo-page { padding: 16px 24px; } .zo-col { flex-basis: 300px; } }

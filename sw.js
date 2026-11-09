@@ -7,10 +7,13 @@
 // 2. Zeff itself in the app's frame: every request the frame makes (its pages, scripts, data, Server Actions, the live
 //    events) is handed to the app's page, which asks Zeff on the PC through its WebRTC connection and streams the
 //    answer back here. The frame's address stays app.getzeff.com/… — Zeff's own paths.
-const CACHE = "zeff-companion-v17";
+const CACHE = "zeff-companion-v19";
 /** Zeff's own files (/_next/…) as last fetched, each with its hash — kept across versions of the app. */
 const FILES = "zeff-files";
-const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
+/** Zeff's pages as last seen (their HTML, the newest 80) — readable offline in the app ("Seen"; companion/offline/seen.tsx). */
+const PAGES = "zeff-pages";
+const KEEP_PAGES = 80;
+const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/offline.js", "/_zc/offline.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
 const WAIT_MS = 4000;
 
 self.addEventListener("install", (e) => {
@@ -26,7 +29,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FILES).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FILES && k !== PAGES).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -65,6 +68,23 @@ async function connectionPage() {
 }
 
 let seq = 0;
+
+/** A page as seen: kept (with its title and when) for reading offline; the oldest beyond KEEP_PAGES go. */
+async function keepPage(path, html) {
+  const title = (/<title[^>]*>([^<]*)/i.exec(html)?.[1] ?? path).replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').trim();
+  const c = await caches.open(PAGES);
+  await c.put(new Request(new URL(path, location.origin).href), new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "x-zc-title": encodeURIComponent(title), "x-zc-at": new Date().toISOString() } }));
+  const keys = await c.keys();
+  if (keys.length <= KEEP_PAGES) return;
+  const dated = await Promise.all(keys.map(async (k) => [k, (await c.match(k))?.headers.get("x-zc-at") ?? ""]));
+  dated.sort((a, b) => a[1].localeCompare(b[1]));
+  for (const [k] of dated.slice(0, dated.length - KEEP_PAGES)) await c.delete(k);
+}
+
+/** A page's copy as last seen (for the frame while the PC is away). */
+async function seenPage(url) {
+  return (await caches.open(PAGES)).match(new URL(url.pathname + url.search, location.origin).href);
+}
 
 /** A Zeff page for the frame: /_zc/frame.js first thing in its <head> (see there). */
 function withFrameScript(body) {
@@ -140,6 +160,12 @@ async function throughZeff(e) {
         // Gzipped on the PC (text): unpacked as it comes.
         let out = noBody ? null : data.zgz ? stream.pipeThrough(new DecompressionStream("gzip")) : stream;
         if (out && html) out = withFrameScript(out);
+        // A page shown: kept as seen, to read offline later (not the app's own offline reader, which asks for it again).
+        if (out && html && req.method === "GET" && data.status === 200) {
+          const [a, b] = out.tee();
+          out = a;
+          e.waitUntil(new Response(b).text().then((t) => keepPage(url.pathname + url.search, t)).catch(() => {}));
+        }
         // One of Zeff's own files: kept, with its hash, for the next time.
         if (out && data.hash && req.method === "GET") {
           const [a, b] = out.tee();
@@ -177,7 +203,12 @@ self.addEventListener("fetch", (e) => {
   // Everything the frame asks for — its page itself (destination "iframe") and all it loads: Zeff, through the connection.
   e.respondWith(
     (async () => {
-      if (req.destination === "iframe") return throughZeff(e);
+      if (req.destination === "iframe") {
+        const res = await throughZeff(e);
+        // The PC away: the page as last seen, if it was.
+        if (res.status === 503 && req.method === "GET") return (await seenPage(url)) ?? res;
+        return res;
+      }
       const client = e.clientId ? await self.clients.get(e.clientId) : null;
       if (client?.frameType === "nested") {
         // One of Zeff's own files we keep: at once from here (a page is usable without waiting for the PC), checked in the
