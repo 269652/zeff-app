@@ -1,5 +1,5 @@
 :root {
-  --bg: #f6f6f8;
+  --bg: #fafafa;
   --card: #ffffff;
   --fg: #1f1f23;
   --muted: #5f5f69;
@@ -13,8 +13,8 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17171a;
-    --card: #222226;
+    --bg: #09090b;
+    --card: #18181b;
     --fg: #ececf1;
     --muted: #a1a1ab;
     --line: #34343a;
@@ -29,17 +29,22 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
-body { font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); min-height: 100dvh; }
-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
-h1 { font-size: 20px; margin: 0; }
+/* Zeff's font (Geist — offline.css loads it) and its header: a white bar, the name bold, the account a small chip. */
+body { font: 16px/1.45 "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); min-height: 100dvh; }
+header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
 .account { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
-.account select { font: inherit; font-size: 15px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 36px; max-width: 100%; min-width: 0; }
+.account { flex: 0 1 auto; padding: 2px 4px 2px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.account select { font: inherit; font-size: 14px; font-weight: 500; color: var(--fg); background: transparent; border: 0; padding: 4px 2px; min-height: 32px; max-width: 100%; min-width: 0; }
 .account select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 header > .status { margin-left: auto; flex: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .notice { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-h2 { font-size: 18px; margin: 0 0 8px; }
-main { padding: 12px 16px 24px; max-width: 640px; margin: 0 auto; }
+/* (The frame's own elements — not the offline app's, which has Zeff's styles.) */
+h2:not(#offlineApp *) { font-size: 18px; margin: 0 0 8px; }
+main:not(#offlineApp *) { padding: 12px 16px 24px; max-width: 640px; margin: 0 auto; }
+/* The offline app shown: edge to edge (its own bars and padding, as in Zeff). */
+main:has(> #offlineApp:not([hidden])) { padding: 0; max-width: none; }
 .muted { color: var(--muted); }
 .status { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; min-height: 36px; cursor: pointer; }
 .status:focus-visible, .todo button:focus-visible, .todo input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -59,8 +64,8 @@ main { padding: 12px 16px 24px; max-width: 640px; margin: 0 auto; }
 .todo button { width: 44px; height: 44px; border: 0; background: none; font-size: 20px; color: var(--muted); cursor: pointer; border-radius: 8px; }
 .todo button[aria-pressed="true"] { color: var(--star); }
 .todo.closed .text { color: var(--muted); text-decoration: line-through; }
-details { margin-top: 20px; }
-summary { cursor: pointer; color: var(--muted); padding: 8px 0; min-height: 44px; display: flex; align-items: center; }
+details:not(#offlineApp *) { margin-top: 20px; }
+summary:not(#offlineApp *) { cursor: pointer; color: var(--muted); padding: 8px 0; min-height: 44px; display: flex; align-items: center; }
 #done { margin-top: 8px; }
 #welcome { margin-bottom: 12px; }
 .setup { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px 12px; margin-top: 16px; }

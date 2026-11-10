@@ -7,13 +7,13 @@
 // 2. Zeff itself in the app's frame: every request the frame makes (its pages, scripts, data, Server Actions, the live
 //    events) is handed to the app's page, which asks Zeff on the PC through its WebRTC connection and streams the
 //    answer back here. The frame's address stays app.getzeff.com/… — Zeff's own paths.
-const CACHE = "zeff-companion-v19";
+const CACHE = "zeff-companion-v20";
 /** Zeff's own files (/_next/…) as last fetched, each with its hash — kept across versions of the app. */
 const FILES = "zeff-files";
 /** Zeff's pages as last seen (their HTML, the newest 80) — readable offline in the app ("Seen"; companion/offline/seen.tsx). */
 const PAGES = "zeff-pages";
 const KEEP_PAGES = 80;
-const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/offline.js", "/_zc/offline.css", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
+const SHELL = ["/", "/_zc/app.js", "/_zc/rtc.js", "/_zc/frame.js", "/_zc/app.css", "/_zc/offline.js", "/_zc/offline.css", "/_zc/Geist-latin.woff2", "/_zc/manifest.webmanifest", "/_zc/icon.svg", "/_zc/icon-192.png", "/_zc/apple-touch-icon.png"];
 const WAIT_MS = 4000;
 
 self.addEventListener("install", (e) => {
